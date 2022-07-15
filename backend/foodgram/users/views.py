@@ -43,9 +43,9 @@ class CustomUserViewSet(ListRetrieveCreateViewSet):
 
     @action(detail=False, permission_classes=(IsAuthenticated,))
     def subscriptions(self, request):
-        fav_list = self.request.user.follower.all()
-        new_queryset = [i.author.pk for i in fav_list]
-        queryset = User.objects.filter(id__in=new_queryset)
+        queryset = User.objects.filter(
+            id__in=request.user.follower.values_list('author', flat=True)
+        ).order_by('pk')
         recipes_limit = self.request.query_params.get('recipes_limit')
         page = self.paginate_queryset(queryset)
         serializer = SubscriptSerializer(
@@ -62,19 +62,16 @@ class CustomUserViewSet(ListRetrieveCreateViewSet):
     )
     def subscribe(self, request, pk):
         data = {}
-        data['author'] = get_object_or_404(User, pk=pk)
-        data['user'] = self.request.user
+        data['author'] = get_object_or_404(User, pk=pk).pk
+        data['user'] = self.request.user.pk
         serializer = SubscriptCreateSerializer(
             context={'request': request}, data=data
         )
-        if serializer.is_valid():
-            if request.method == "POST":
-                serializer.save()
-                return Response(
-                    serializer.data, status=status.HTTP_201_CREATED
-                )
-            if not Subscript.objects.filter(**data).exists():
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            Subscript.objects.filter(**data).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        if request.method == "POST":
+            serializer.save()
+            return Response(
+                serializer.data, status=status.HTTP_201_CREATED
+            )
+        Subscript.objects.filter(**data).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

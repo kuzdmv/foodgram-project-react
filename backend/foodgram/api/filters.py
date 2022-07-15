@@ -26,20 +26,18 @@ class RecipesFilter(django_filters.FilterSet):
     def filter_is_favorited(self, queryset, name, value):
         if not self.request.user.is_authenticated:
             return queryset
-        fav_list = self.request.user.favorite.all()
-        recipe_list = [i.recipe.pk for i in fav_list]
+        recipes = self.request.user.favorite.values_list('recipe', flat=True)
         if value == '1':
-            return queryset.filter(id__in=recipe_list)
-        return queryset.exclude(id__in=recipe_list)
+            return queryset.filter(id__in=recipes)
+        return queryset.exclude(id__in=recipes)
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
         if not self.request.user.is_authenticated:
             return queryset
-        listtobuy_list = self.request.user.listtobuy.all()
-        recipe_list = [i.recipe.pk for i in listtobuy_list]
+        recipes = self.request.user.listtobuy.values_list('recipe', flat=True)
         if value == '1':
-            return queryset.filter(id__in=recipe_list)
-        return queryset.exclude(id__in=recipe_list)
+            return queryset.filter(id__in=recipes)
+        return queryset.exclude(id__in=recipes)
 
     class Meta:
         model = Recipes

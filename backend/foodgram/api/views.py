@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from rest_framework import viewsets, status
@@ -17,7 +18,10 @@ from .serializers import (
 from .permissions import (
     AuthorOrReadOnly
 )
-from recipes.models import Tag, Ingredient, Recipes, Favorite, ListToBuy
+from recipes.models import (
+    Tag, Ingredient, Recipes,
+    Favorite, ListToBuy, IngredientRecipe
+)
 from . mixins import ListRetrieveViewSet
 from .pagination import CustomPagination
 from .filters import RecipesFilter
@@ -51,56 +55,47 @@ class RecipesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+    def create_func(self, request, pk, model, getserializer):
+        data = {}
+        data['recipe'] = get_object_or_404(Recipes, pk=pk).pk
+        data['user'] = self.request.user.pk
+        serializer = getserializer(
+            context={'request': request}, data=data
+        )
+        serializer.is_valid(raise_exception=True)
+        if request.method == "POST":
+            serializer.save()
+            return Response(
+                serializer.data, status=status.HTTP_201_CREATED
+            )
+        model.objects.filter(**data).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk):
-        data = {}
-        data['recipe'] = get_object_or_404(Recipes, pk=pk)
-        data['user'] = self.request.user
-        serializer = FavoriteRecipesCreateSerializer(data=data)
-        if serializer.is_valid():
-            if request.method == "POST":
-                serializer.save()
-                return Response(
-                    serializer.data, status=status.HTTP_201_CREATED
-                )
-            if not Favorite.objects.filter(**data).exists():
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            Favorite.objects.filter(**data).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return self.create_func(
+            request, pk, Favorite, FavoriteRecipesCreateSerializer
+        )
 
     @action(detail=True, methods=['post', 'delete'])
     def shopping_cart(self, request, pk):
-        data = {}
-        data['recipe'] = get_object_or_404(Recipes, pk=pk)
-        data['user'] = self.request.user
-        serializer = ListToBuyRecipesCreateSerializer(data=data)
-        if serializer.is_valid():
-            if request.method == "POST":
-                serializer.save()
-                return Response(
-                    serializer.data, status=status.HTTP_201_CREATED
-                )
-            if not ListToBuy.objects.filter(**data).exists():
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            ListToBuy.objects.filter(**data).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return self.create_func(
+            request, pk, ListToBuy, ListToBuyRecipesCreateSerializer
+        )
 
     @action(detail=False)
     def download_shopping_cart(self, request):
-        recipes_caraft = self.request.user.listtobuy.all()
-        recipe_list = [i.recipe for i in recipes_caraft]
-        ingredient_list = [i.ingredientrecipe.all() for i in recipe_list]
-        craft = {}
-        for i in ingredient_list:
-            for b in i:
-                if b.ingredient in craft:
-                    craft[b.ingredient] += b.amount
-                else:
-                    craft[b.ingredient] = b.amount
+        ingredient_list = IngredientRecipe.objects.filter(
+            recipe_id__in=self.request.user.listtobuy.values_list(
+                'recipe', flat=True
+            )
+        ).values_list('ingredient_id', flat=True)
+        ingredients_amount = Ingredient.objects.filter(
+            id__in=ingredient_list
+        ).annotate(amount=Sum('ingredientrecipe__amount')).order_by('pk')
         to_buy = [
-            f'{i.name} ({i.measurement_unit}) - {craft[i]} \n' for i in craft
+            f'{ing.name} ({ing.measurement_unit}) - {ing.amount} \n'
+            for ing in ingredients_amount
         ]
         response = HttpResponse(content_type='text/plain')
         response["Content-Disposition"] = "attachment; filename=shop-list.txt"
