@@ -155,17 +155,17 @@ class RecipesCreateSerializer(serializers.ModelSerializer):
     def validate_ingredients(self, value):
         ingr_list = []
         for data in value:
-            id = data['id'].pk
+            ingr_id = data['id'].pk
             if not data:
-                raise serializers.ValidationError('Укажите Ингридиенты')
+                raise serializers.ValidationError('Укажите Ингредиенты')
             if id in ingr_list:
                 raise serializers.ValidationError(
-                    'Нельзя указывать 2 одиноквых ингридиента'
+                    'Нельзя указывать 2 одинаковых ингредиента'
                 )
             ingr_list.append(id)
             if int(data['amount']) <= 0:
                 raise serializers.ValidationError(
-                    f'Укажите кол-во для ингридиента id={id} больше 0'
+                    f'Укажите кол-во для ингредиента id={ingr_id} больше 0'
                 )
         return value
 
@@ -183,10 +183,10 @@ class RecipesCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
-        receip = Recipes.objects.create(**validated_data)
-        receip.tags.set(tags)
-        self.create_ingredients(receip, ingredients)
-        return receip
+        recipe = Recipes.objects.create(**validated_data)
+        recipe.tags.set(tags)
+        self.create_ingredients(recipe, ingredients)
+        return recipe
 
     def update(self, instance, validated_data):
         instance.tags.clear()
@@ -253,7 +253,6 @@ class SubscriptCreateSerializer(serializers.ModelSerializer):
         return value
 
     def to_representation(self, instance):
-        print(instance)
         return SubscriptSerializer(
             instance.author, context=self.context
         ).to_representation(instance.author)

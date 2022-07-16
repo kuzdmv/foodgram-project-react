@@ -104,8 +104,8 @@ class IngredientRecipe(models.Model):
     amount = models.PositiveIntegerField('Колличество')
 
     class Meta:
-        verbose_name = 'Кол-во ингридента для рецпта'
-        verbose_name_plural = 'Кол-во ингридента для рецпта'
+        verbose_name = 'Кол-во ингредиента для рецпта'
+        verbose_name_plural = 'Кол-во ингредиента для рецпта'
         ordering = ('recipe',)
         constraints = [
             models.UniqueConstraint(fields=['ingredient', 'recipe'],

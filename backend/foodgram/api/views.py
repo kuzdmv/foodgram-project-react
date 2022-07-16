@@ -55,7 +55,9 @@ class RecipesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    def create_func(self, request, pk, model, getserializer):
+    def favorite_listtobuy_create(
+        self, request, pk, model, getserializer
+    ):
         data = {}
         data['recipe'] = get_object_or_404(Recipes, pk=pk).pk
         data['user'] = self.request.user.pk
@@ -73,29 +75,28 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk):
-        return self.create_func(
+        return self.favorite_listtobuy_create(
             request, pk, Favorite, FavoriteRecipesCreateSerializer
         )
 
     @action(detail=True, methods=['post', 'delete'])
     def shopping_cart(self, request, pk):
-        return self.create_func(
+        return self.favorite_listtobuy_create(
             request, pk, ListToBuy, ListToBuyRecipesCreateSerializer
         )
 
     @action(detail=False)
     def download_shopping_cart(self, request):
-        ingredient_list = IngredientRecipe.objects.filter(
-            recipe_id__in=self.request.user.listtobuy.values_list(
-                'recipe', flat=True
-            )
-        ).values_list('ingredient_id', flat=True)
-        ingredients_amount = Ingredient.objects.filter(
-            id__in=ingredient_list
+        ingredient_list = Ingredient.objects.filter(
+            id__in=IngredientRecipe.objects.filter(
+                recipe_id__in=self.request.user.listtobuy.values_list(
+                    'recipe', flat=True
+                )
+            ).values_list('ingredient_id', flat=True)
         ).annotate(amount=Sum('ingredientrecipe__amount')).order_by('pk')
         to_buy = [
             f'{ing.name} ({ing.measurement_unit}) - {ing.amount} \n'
-            for ing in ingredients_amount
+            for ing in ingredient_list
         ]
         response = HttpResponse(content_type='text/plain')
         response["Content-Disposition"] = "attachment; filename=shop-list.txt"
