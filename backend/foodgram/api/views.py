@@ -55,7 +55,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    def favorite_listtobuy_create(
+    def create_delete(
         self, request, pk, model, getserializer
     ):
         data = {}
@@ -75,29 +75,29 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk):
-        return self.favorite_listtobuy_create(
+        return self.create_delete(
             request, pk, Favorite, FavoriteRecipesCreateSerializer
         )
 
     @action(detail=True, methods=['post', 'delete'])
     def shopping_cart(self, request, pk):
-        return self.favorite_listtobuy_create(
+        return self.create_delete(
             request, pk, ListToBuy, ListToBuyRecipesCreateSerializer
         )
 
     @action(detail=False)
     def download_shopping_cart(self, request):
-        ingredient_list = Ingredient.objects.filter(
-            id__in=IngredientRecipe.objects.filter(
-                recipe_id__in=self.request.user.listtobuy.values_list(
-                    'recipe', flat=True
-                )
-            ).values_list('ingredient_id', flat=True)
-        ).annotate(amount=Sum('ingredientrecipe__amount')).order_by('pk')
-        to_buy = [
-            f'{ing.name} ({ing.measurement_unit}) - {ing.amount} \n'
-            for ing in ingredient_list
-        ]
+        ingredient_list = IngredientRecipe.objects.filter(
+            recipe__listtobuy__user=request.user
+        ).order_by('ingredient__name').values(
+            'ingredient__name', 'ingredient__measurement_unit'
+        ).annotate(amount_total=Sum('amount'))
+        to_buy = []
+        for ingredient in ingredient_list:
+            name = ingredient['ingredient__name']
+            unit = ingredient['ingredient__measurement_unit']
+            amount = ingredient['amount_total']
+            to_buy.append(f'{name} ({unit}) - {amount} \n')
         response = HttpResponse(content_type='text/plain')
         response["Content-Disposition"] = "attachment; filename=shop-list.txt"
         response.writelines(to_buy)

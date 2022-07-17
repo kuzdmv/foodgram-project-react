@@ -158,7 +158,7 @@ class RecipesCreateSerializer(serializers.ModelSerializer):
             ingr_id = data['id'].pk
             if not data:
                 raise serializers.ValidationError('Укажите Ингредиенты')
-            if id in ingr_list:
+            if ingr_id in ingr_list:
                 raise serializers.ValidationError(
                     'Нельзя указывать 2 одинаковых ингредиента'
                 )
