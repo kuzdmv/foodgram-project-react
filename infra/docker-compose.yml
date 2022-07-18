@@ -1,38 +1,41 @@
 version: '3.3'
 services:
 
-  db:
-    image: postgres:13.0-alpine 
+  frontend:
+    image: kuzdmv/frontend:latest
     volumes:
-      - /var/lib/postgresql/data/   
-    env_file:
-      - ./.env
-
-  web:
-    build: ../backend/foodgram/
-    restart: always
-    volumes:
-      - static_value:/app/staticfiles/
-      - media_value:/app/media/
-    depends_on:
-      - db
-    env_file:
-      - .env
-
-  
+      - ./frontend/:/app/result_build/
   nginx:
     image: nginx:1.19.3
     ports:
       - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ../frontend/build:/usr/share/nginx/html/
-      - ../docs/:/usr/share/nginx/html/api/docs/
+      - ./frontend/build:/usr/share/nginx/html/
+      - ./docs/:/usr/share/nginx/html/api/docs/
       - static_value:/var/html/staticfiles/
       - media_value:/var/html/media/
     depends_on:
-      - web
-    
+      - frontend
+      - backend
+  db:
+    image: postgres:13.0-alpine
+    volumes:
+      - database:/var/lib/postgresql/data/
+    env_file:
+      - ./.env
+
+  backend:
+    image: kuzdmv/foodgram:latest
+    volumes:
+      - static_value:/app/staticfiles/
+      - media_value:/app/media/
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+
 volumes:
   static_value:
   media_value:
+  database:
