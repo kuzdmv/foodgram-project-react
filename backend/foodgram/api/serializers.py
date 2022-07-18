@@ -162,7 +162,7 @@ class RecipesCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     'Нельзя указывать 2 одинаковых ингредиента'
                 )
-            ingr_list.append(id)
+            ingr_list.append(ingr_id)
             if int(data['amount']) <= 0:
                 raise serializers.ValidationError(
                     f'Укажите кол-во для ингредиента id={ingr_id} больше 0'
