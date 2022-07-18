@@ -179,7 +179,7 @@ class ListToBuy(models.Model):
     class Meta:
         ordering = ('user',)
         verbose_name = 'Список покупок'
-        verbose_name_plural = 'Списоки покупок'
+        verbose_name_plural = 'Списки покупок'
         constraints = [
             models.UniqueConstraint(fields=['user', 'recipe'],
                                     name='unique_buy_recipes')
