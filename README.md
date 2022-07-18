@@ -10,8 +10,7 @@ https://github.com/kuzdmv
 
 ### Развертывание проекта локально:
 ```
-Для развертывния проекта локально, из дерриктории infra/
-Заменяем файл docker-compose и nginx в infra/ из infra/local/
+Заменяем файлы docker-compose и nginx в infra/ на файлы из infra/local/
 
 Далее из дерриктории infra/ необходимо выполнить команду:
 docker-compose up -d --build
